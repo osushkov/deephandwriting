@@ -117,6 +117,11 @@ struct Network::NetworkImpl {
 
   void ApplyUpdate(const Tensor &weightUpdates) { layerWeights += weightUpdates; }
 
+  Matrix LayerWeights(unsigned layer) const {
+    assert(layer < layerWeights.NumLayers());
+    return layerWeights(layer);
+  }
+
 private:
   Matrix createLayer(unsigned inputSize, unsigned layerSize) {
     assert(inputSize > 0 && layerSize > 0);
@@ -256,6 +261,7 @@ pair<Tensor, float> Network::ComputeGradient(const TrainingProvider &samplesProv
 }
 
 void Network::ApplyUpdate(const Tensor &weightUpdates) { impl->ApplyUpdate(weightUpdates); }
+Matrix Network::LayerWeights(unsigned layer) const { return impl->LayerWeights(layer); }
 
 std::ostream &Network::Output(ostream &stream) {
   for (unsigned i = 0; i < impl->layerWeights.NumLayers(); i++) {

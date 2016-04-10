@@ -31,3 +31,8 @@ struct ReLU : public ActivationFunc {
 private:
   const float leak;
 };
+
+struct Linear : public ActivationFunc {
+  float ActivationValue(float in) const override { return in; }
+  float DerivativeValue(float in, float out) const override { return 1.0f; }
+};

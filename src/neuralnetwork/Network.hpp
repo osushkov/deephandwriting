@@ -21,13 +21,14 @@ public:
 
   Network(Network &&other);
   Network(const NetworkSpec &spec);
-  Network(istream &stream);
+  Network(istream &stream); // TODO: this constructor doesnt handle different activation funcs.
 
   virtual ~Network();
 
   Vector Process(const Vector &input);
   pair<Tensor, float> ComputeGradient(const TrainingProvider &samplesProvider);
   void ApplyUpdate(const Tensor &weightUpdates);
+  Matrix LayerWeights(unsigned layer) const;
 
   std::ostream &Output(ostream &stream);
 

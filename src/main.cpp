@@ -172,7 +172,7 @@ uptr<Trainer> getTrainer(void) {
 }
 
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
-  auto hiddenActivation = make_shared<ReLU>();
+  auto hiddenActivation = make_shared<ReLU>(0.01f);
 
   NetworkSpec spec;
   spec.numInputs = inputSize;
