@@ -2,16 +2,25 @@
 
 #include "../common/Common.hpp"
 #include "../common/Math.hpp"
+#include "ActivationFunc.hpp"
 #include "Tensor.hpp"
 #include "TrainingProvider.hpp"
 #include <vector>
+
+struct NetworkSpec {
+  unsigned numInputs;
+  unsigned numOutputs;
+
+  sptr<ActivationFunc> outputFunc;
+  vector<pair<unsigned, sptr<ActivationFunc>>> hiddenLayers;
+};
 
 class Network {
 public:
   static void OutputDebugging(void);
 
   Network(Network &&other);
-  Network(const vector<unsigned> &layerSizes);
+  Network(const NetworkSpec &spec);
   Network(istream &stream);
 
   virtual ~Network();

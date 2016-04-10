@@ -172,8 +172,15 @@ uptr<Trainer> getTrainer(void) {
 }
 
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
-  vector<unsigned> networkLayers = {inputSize, inputSize, inputSize / 2, inputSize / 4, outputSize};
-  return Network(networkLayers);
+  auto hiddenActivation = make_shared<ReLU>();
+
+  NetworkSpec spec;
+  spec.numInputs = inputSize;
+  spec.numOutputs = outputSize;
+  spec.outputFunc = make_shared<Logistic>();
+  spec.hiddenLayers = {make_pair(inputSize / 2, hiddenActivation)};
+
+  return Network(spec);
 }
 
 Network loadNetwork(string path) {

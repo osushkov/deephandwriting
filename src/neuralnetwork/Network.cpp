@@ -29,16 +29,30 @@ struct Network::NetworkImpl {
   const unsigned numLayers;
 
   Tensor layerWeights;
+  vector<sptr<ActivationFunc>> layerActivations;
+
   Tensor zeroGradient;
 
-  NetworkImpl(const vector<unsigned> &layerSizes)
-      : numInputs(layerSizes[0]), numOutputs(layerSizes[layerSizes.size() - 1]),
-        numLayers(layerSizes.size() - 1) {
+  NetworkImpl(const NetworkSpec &spec)
+      : numInputs(spec.numInputs), numOutputs(spec.numOutputs),
+        numLayers(spec.hiddenLayers.size() + 1) {
 
-    assert(layerSizes.size() >= 2);
+    if (spec.hiddenLayers.empty()) {
+      layerWeights.AddLayer(createLayer(numInputs, numOutputs));
+      layerActivations.push_back(spec.outputFunc);
+    } else {
+      layerWeights.AddLayer(createLayer(numInputs, spec.hiddenLayers[0].first));
+      layerActivations.push_back(spec.hiddenLayers[0].second);
 
-    for (unsigned i = 0; i < numLayers; i++) {
-      layerWeights.AddLayer(createLayer(layerSizes[i], layerSizes[i + 1]));
+      for (unsigned i = 0; i < spec.hiddenLayers.size() - 1; i++) {
+        layerWeights.AddLayer(
+            createLayer(spec.hiddenLayers[i].first, spec.hiddenLayers[i + 1].first));
+        layerActivations.push_back(spec.hiddenLayers[i + 1].second);
+      }
+
+      layerWeights.AddLayer(
+          createLayer(spec.hiddenLayers[spec.hiddenLayers.size() - 1].first, numOutputs));
+      layerActivations.push_back(spec.outputFunc);
     }
 
     zeroGradient = layerWeights;
@@ -140,13 +154,13 @@ private:
     ctx.layerOutputs.resize(layerWeights.NumLayers());
     ctx.layerDerivatives.resize(layerWeights.NumLayers());
 
-    auto out = getLayerOutput(input, layerWeights(0), false);
+    auto out = getLayerOutput(input, layerWeights(0), layerActivations[0].get());
     ctx.layerOutputs[0] = out.first;
     ctx.layerDerivatives[0] = out.second;
 
     for (unsigned i = 1; i < layerWeights.NumLayers(); i++) {
-      auto out = getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i),
-                                i == layerWeights.NumLayers() - 1);
+      auto out =
+          getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get());
       ctx.layerOutputs[i] = out.first;
       ctx.layerDerivatives[i] = out.second;
     }
@@ -157,7 +171,7 @@ private:
 
   // Returns the output vector of the layer, and the derivative vector for the layer.
   pair<Vector, Vector> getLayerOutput(const Vector &prevLayer, const Matrix &layerWeights,
-                                      bool isOutput) const {
+                                      ActivationFunc *func) const {
     Vector z =
         layerWeights.topRightCorner(layerWeights.rows(), layerWeights.cols() - 1) * prevLayer;
     Vector derivatives(z.rows());
@@ -165,23 +179,13 @@ private:
     for (unsigned i = 0; i < layerWeights.rows(); i++) {
       z(i) += layerWeights(i, 0);
       float in = z(i);
-      z(i) = isOutput ? outputActivationFunc(in) : activationFunc(in);
 
-      derivatives(i) = isOutput ? outputDerivativeFunc(in, z(i)) : derivativeFunc(in, z(i));
+      z(i) = func->ActivationValue(in);
+      derivatives(i) = func->DerivativeValue(in, z(i));
     }
 
     return make_pair(z, derivatives);
   }
-
-  float outputActivationFunc(float v) const { return 1.0f / (1.0f + expf(-v)); }
-  // float activationFunc(float v) const { return 1.0f / (1.0f + expf(-v)); } // logistic function
-  // float activationFunc(float v) const { return logf(1.0f + expf(v)); } // softplus function
-  float activationFunc(float v) const { return v > 0.0f ? v : (0.01f * v); }
-
-  float outputDerivativeFunc(float in, float out) const { return out * (1.0f - out); }
-  // float derivativeFunc(float in, float out) const { return out * (1.0f - out); }
-  // float derivativeFunc(float in, float out) const { return 1.0f / (1.0f + expf(-in)); }
-  float derivativeFunc(float in, float out) const { return in > 0.0f ? 1.0f : 0.01f; }
 
   void computeSampleGradient(const TrainingSample &sample, NetworkContext &ctx,
                              pair<Tensor, float> &outGradient) const {
@@ -229,7 +233,8 @@ private:
 };
 
 Network::Network(Network &&other) : impl(move(other.impl)) {}
-Network::Network(const vector<unsigned> &layerSizes) : impl(new NetworkImpl(layerSizes)) {}
+Network::Network(const NetworkSpec &spec) : impl(new NetworkImpl(spec)) {}
+
 Network::Network(istream &stream) {
   unsigned numInputs, numOutputs, numLayers;
 
