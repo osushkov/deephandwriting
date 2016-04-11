@@ -21,6 +21,7 @@
 #include "image/IdxLabels.hpp"
 #include "image/ImageGenerator.hpp"
 #include "image/ImageWriter.hpp"
+#include "neuralnetwork/Autoencoder.hpp"
 #include "neuralnetwork/Network.hpp"
 #include "util/Timer.hpp"
 #include "util/Util.hpp"
@@ -224,6 +225,20 @@ void eval(Network &network, const vector<TrainingSample> &testSamples) {
   ;
 }
 
+void testAutoencoder(const vector<TrainingSample> &digitSamples) {
+  vector<TrainingSample> samples;
+  for (const auto &ds : digitSamples) {
+    if (samples.size() > 10000) {
+      break;
+    }
+    samples.push_back(TrainingSample(ds.input, ds.input));
+  }
+
+  Autoencoder encoder(0.2f);
+  encoder.ComputeHiddenLayer(300, make_unique<ReLU>(0.01f), samples,
+                             EncodedDataType::BOUNDED_NORMALISED);
+}
+
 int main(int argc, char **argv) {
   Eigen::initParallel();
   srand(1234);
@@ -232,7 +247,7 @@ int main(int argc, char **argv) {
 
   cout << "loading training data" << endl;
   vector<TrainingSample> trainingSamples =
-      loadSamples("data/train_images.idx3", "data/train_labels.idx1", true);
+      loadSamples("data/train_images.idx3", "data/train_labels.idx1", false);
   random_shuffle(trainingSamples.begin(), trainingSamples.end());
   cout << "training data size: " << trainingSamples.size() << endl;
 
@@ -242,24 +257,26 @@ int main(int argc, char **argv) {
   random_shuffle(testSamples.begin(), testSamples.end());
   cout << "test data size: " << testSamples.size() << endl;
 
-  unsigned inputSize = trainingSamples.front().input.rows();
-  unsigned outputSize = trainingSamples.front().expectedOutput.rows();
+  testAutoencoder(trainingSamples);
 
-  // TODO: should probably use a command line args parsing library here.
-  if (argc == 1 || (argc >= 2 && string(argv[1]) == "train")) {
-    Network network = argc == 3 ? loadNetwork(argv[2]) : createNewNetwork(inputSize, outputSize);
-    learn(network, trainingSamples, testSamples);
-
-    ofstream networkOut("network.dat", ios::out | ios::binary);
-    network.Serialize(networkOut);
-  } else if (argc == 3 && string(argv[1]) == "eval") {
-    Network network = loadNetwork(argv[2]);
-    eval(network, testSamples);
-  } else {
-    cout << "invalid arguments, expected: " << endl;
-    cout << string(argv[0]) << " train [existing_network_file]" << endl;
-    cout << string(argv[0]) << " test network_file" << endl;
-  }
+  // unsigned inputSize = trainingSamples.front().input.rows();
+  // unsigned outputSize = trainingSamples.front().expectedOutput.rows();
+  //
+  // // TODO: should probably use a command line args parsing library here.
+  // if (argc == 1 || (argc >= 2 && string(argv[1]) == "train")) {
+  //   Network network = argc == 3 ? loadNetwork(argv[2]) : createNewNetwork(inputSize, outputSize);
+  //   learn(network, trainingSamples, testSamples);
+  //
+  //   ofstream networkOut("network.dat", ios::out | ios::binary);
+  //   network.Serialize(networkOut);
+  // } else if (argc == 3 && string(argv[1]) == "eval") {
+  //   Network network = loadNetwork(argv[2]);
+  //   eval(network, testSamples);
+  // } else {
+  //   cout << "invalid arguments, expected: " << endl;
+  //   cout << string(argv[0]) << " train [existing_network_file]" << endl;
+  //   cout << string(argv[0]) << " test network_file" << endl;
+  // }
 
   return 0;
 }
