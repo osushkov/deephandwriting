@@ -64,6 +64,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
       TrainingProvider samplesProvider = getStochasticSamples(trainingSamples, i, iterations);
       pair<Tensor, float> gradientError = network.ComputeGradient(samplesProvider);
 
+      // restrictGradient(gradientError.first);
       gradientError.first *= -curLearnRate;
 
       if (i == 0) {
@@ -93,6 +94,24 @@ struct DynamicTrainer::DynamicTrainerImpl {
       });
     }
   }
+
+  // void restrictGradient(Tensor &gradient) {
+  //   assert(gradient.NumLayers() == 2);
+  //
+  //   // cout << gradient(0).rows() << " !! " << gradient(1).cols() << endl;
+  //   // cout << gradient(0).cols() << " !! " << gradient(1).rows() << endl;
+  //   //
+  //   // assert(gradient(0).rows() == gradient(1).cols());
+  //   // assert(gradient(0).cols() == gradient(1).rows());
+  //
+  //   Tensor orig = gradient;
+  //   for (int r = 0; r < gradient(0).rows(); r++) {
+  //     for (int c = 0; c < gradient(1).rows(); c++) {
+  //       gradient(0)(r, c) = (orig(0)(r, c) + orig(1)(c, r)) / 2.0f;
+  //       gradient(1)(c, r) = (orig(0)(r, c) + orig(1)(c, r)) / 2.0f;
+  //     }
+  //   }
+  // }
 
   void AddProgressCallback(NetworkTrainerCallback callback) {
     trainingCallbacks.push_back(callback);

@@ -33,7 +33,7 @@ struct Autoencoder::AutoencoderImpl {
     });
 
     vector<TrainingSample> noisySamples = getNoisySamples(samples, dataType);
-    trainer->Train(*(network.get()), noisySamples, 1000);
+    trainer->Train(*(network.get()), noisySamples, 500);
     return network->LayerWeights(0);
   }
 

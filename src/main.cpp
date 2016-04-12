@@ -159,9 +159,9 @@ float testNetwork(Network &network, const std::vector<TrainingSample> &evalSampl
 uptr<Trainer> getTrainer(void) {
   DynamicTrainerBuilder builder;
 
-  builder.StartLearnRate(0.5f)
+  builder.StartLearnRate(0.1f)
       .FinishLearnRate(0.01f)
-      .MaxLearnRate(0.5f)
+      .MaxLearnRate(0.1f)
       .Momentum(0.5f)
       .StartSamplesPerIter(1000)
       .FinishSamplesPerIter(10000)
@@ -179,7 +179,7 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
-  spec.hiddenLayers = {make_pair(inputSize / 2, hiddenActivation)};
+  spec.hiddenLayers = {make_pair(300, hiddenActivation)};
 
   return Network(spec);
 }
@@ -189,10 +189,38 @@ Network loadNetwork(string path) {
   return Network(networkIn);
 }
 
+void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples) {
+  cout << "conditioning" << endl;
+  if (network.NumLayers() <= 1) {
+    return; // No hidden layers, nothing to condition.
+  }
+
+  vector<TrainingSample> conditionSubsample;
+  conditionSubsample.reserve(10000);
+
+  for (const auto &ts : trainingSamples) {
+    if (conditionSubsample.size() > 10000) {
+      break;
+    }
+    conditionSubsample.push_back(TrainingSample(ts.input, ts.input));
+  }
+
+  auto af = make_unique<ReLU>(0.01f);
+
+  Autoencoder autoEncoder(0.25f);
+  Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(0), move(af), conditionSubsample,
+                                             EncodedDataType::BOUNDED_NORMALISED);
+
+  network.SetLayerWeights(0, hl);
+
+  cout << "finished conditioning" << endl;
+}
+
 void learn(Network &network, vector<TrainingSample> &trainingSamples,
            vector<TrainingSample> &testSamples) {
-  auto trainer = getTrainer();
+  // conditionNetwork(network, trainingSamples);
 
+  auto trainer = getTrainer();
   trainer->AddProgressCallback(
       [&trainingSamples, &testSamples](Network &network, float trainError, unsigned iter) {
         if (iter % 100 == 0) {
@@ -257,26 +285,26 @@ int main(int argc, char **argv) {
   random_shuffle(testSamples.begin(), testSamples.end());
   cout << "test data size: " << testSamples.size() << endl;
 
-  testAutoencoder(trainingSamples);
+  // testAutoencoder(trainingSamples);
 
-  // unsigned inputSize = trainingSamples.front().input.rows();
-  // unsigned outputSize = trainingSamples.front().expectedOutput.rows();
-  //
-  // // TODO: should probably use a command line args parsing library here.
-  // if (argc == 1 || (argc >= 2 && string(argv[1]) == "train")) {
-  //   Network network = argc == 3 ? loadNetwork(argv[2]) : createNewNetwork(inputSize, outputSize);
-  //   learn(network, trainingSamples, testSamples);
-  //
-  //   ofstream networkOut("network.dat", ios::out | ios::binary);
-  //   network.Serialize(networkOut);
-  // } else if (argc == 3 && string(argv[1]) == "eval") {
-  //   Network network = loadNetwork(argv[2]);
-  //   eval(network, testSamples);
-  // } else {
-  //   cout << "invalid arguments, expected: " << endl;
-  //   cout << string(argv[0]) << " train [existing_network_file]" << endl;
-  //   cout << string(argv[0]) << " test network_file" << endl;
-  // }
+  unsigned inputSize = trainingSamples.front().input.rows();
+  unsigned outputSize = trainingSamples.front().expectedOutput.rows();
+
+  // TODO: should probably use a command line args parsing library here.
+  if (argc == 1 || (argc >= 2 && string(argv[1]) == "train")) {
+    Network network = argc == 3 ? loadNetwork(argv[2]) : createNewNetwork(inputSize, outputSize);
+    learn(network, trainingSamples, testSamples);
+
+    ofstream networkOut("network.dat", ios::out | ios::binary);
+    network.Serialize(networkOut);
+  } else if (argc == 3 && string(argv[1]) == "eval") {
+    Network network = loadNetwork(argv[2]);
+    eval(network, testSamples);
+  } else {
+    cout << "invalid arguments, expected: " << endl;
+    cout << string(argv[0]) << " train [existing_network_file]" << endl;
+    cout << string(argv[0]) << " test network_file" << endl;
+  }
 
   return 0;
 }

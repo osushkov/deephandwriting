@@ -26,9 +26,16 @@ public:
   virtual ~Network();
 
   Vector Process(const Vector &input);
+  Vector Process(const Vector &input, unsigned limitLayers);
+
   pair<Tensor, float> ComputeGradient(const TrainingProvider &samplesProvider);
   void ApplyUpdate(const Tensor &weightUpdates);
+
+  unsigned NumLayers(void) const;
+  unsigned LayerSize(unsigned layer) const;
+
   Matrix LayerWeights(unsigned layer) const;
+  void SetLayerWeights(unsigned layer, const Matrix &weights);
 
   std::ostream &Output(ostream &stream);
 

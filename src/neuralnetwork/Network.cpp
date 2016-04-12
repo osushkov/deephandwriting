@@ -81,6 +81,13 @@ struct Network::NetworkImpl {
     return process(input, ctx);
   }
 
+  Vector Process(const Vector &input, unsigned limitLayers) {
+    assert(input.rows() == numInputs);
+
+    NetworkContext ctx;
+    return process(input, limitLayers, ctx);
+  }
+
   pair<Tensor, float> ComputeGradient(const TrainingProvider &samplesProvider) {
     const unsigned numSubsets = tbb::task_scheduler_init::default_num_threads();
 
@@ -122,6 +129,14 @@ struct Network::NetworkImpl {
     return layerWeights(layer);
   }
 
+  void SetLayerWeights(unsigned layer, const Matrix &weights) {
+    assert(layer < layerWeights.NumLayers());
+    assert(layerWeights(layer).rows() == weights.rows());
+    assert(layerWeights(layer).cols() == weights.cols());
+
+    layerWeights(layer) = weights;
+  }
+
 private:
   Matrix createLayer(unsigned inputSize, unsigned layerSize) {
     assert(inputSize > 0 && layerSize > 0);
@@ -154,6 +169,10 @@ private:
   }
 
   Vector process(const Vector &input, NetworkContext &ctx) const {
+    return process(input, layerWeights.NumLayers(), ctx);
+  }
+
+  Vector process(const Vector &input, unsigned limitLayers, NetworkContext &ctx) const {
     assert(input.rows() == numInputs);
 
     ctx.layerOutputs.resize(layerWeights.NumLayers());
@@ -163,15 +182,13 @@ private:
     ctx.layerOutputs[0] = out.first;
     ctx.layerDerivatives[0] = out.second;
 
-    for (unsigned i = 1; i < layerWeights.NumLayers(); i++) {
-      auto out =
-          getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get());
+    for (unsigned i = 1; i < limitLayers; i++) {
+      out = getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get());
       ctx.layerOutputs[i] = out.first;
       ctx.layerDerivatives[i] = out.second;
     }
 
-    assert(ctx.layerOutputs[ctx.layerOutputs.size() - 1].rows() == numOutputs);
-    return ctx.layerOutputs[ctx.layerOutputs.size() - 1];
+    return out.first;
   }
 
   // Returns the output vector of the layer, and the derivative vector for the layer.
@@ -255,13 +272,25 @@ Network::Network(istream &stream) {
 Network::~Network() = default;
 
 Vector Network::Process(const Vector &input) { return impl->Process(input); }
+Vector Network::Process(const Vector &input, unsigned limitLayers) {
+  return impl->Process(input, limitLayers);
+}
 
 pair<Tensor, float> Network::ComputeGradient(const TrainingProvider &samplesProvider) {
   return impl->ComputeGradient(samplesProvider);
 }
 
 void Network::ApplyUpdate(const Tensor &weightUpdates) { impl->ApplyUpdate(weightUpdates); }
+
+unsigned Network::NumLayers(void) const { return impl->layerWeights.NumLayers(); }
+
+unsigned Network::LayerSize(unsigned layer) const { return impl->layerWeights(layer).rows(); }
+
 Matrix Network::LayerWeights(unsigned layer) const { return impl->LayerWeights(layer); }
+
+void Network::SetLayerWeights(unsigned layer, const Matrix &weights) {
+  impl->SetLayerWeights(layer, weights);
+}
 
 std::ostream &Network::Output(ostream &stream) {
   for (unsigned i = 0; i < impl->layerWeights.NumLayers(); i++) {
