@@ -15,8 +15,6 @@
 #include <iostream>
 #include <thread>
 
-static const float INIT_WEIGHT_RANGE = 0.1f;
-
 struct NetworkContext {
   vector<Vector> layerOutputs;
   vector<Vector> layerDerivatives;
@@ -143,12 +141,13 @@ private:
 
     unsigned numRows = layerSize;
     unsigned numCols = inputSize + 1; // +1 accounts for bias input
+    float initRange = 1.0f / sqrtf(numCols);
 
     Matrix result(numRows, numCols);
 
     for (unsigned r = 0; r < result.rows(); r++) {
       for (unsigned c = 0; c < result.cols(); c++) {
-        result(r, c) = Util::RandInterval(-INIT_WEIGHT_RANGE, INIT_WEIGHT_RANGE);
+        result(r, c) = Util::RandInterval(-initRange, initRange);
       }
     }
 

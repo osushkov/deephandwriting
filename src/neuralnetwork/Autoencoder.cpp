@@ -1,8 +1,11 @@
 
 #include "Autoencoder.hpp"
-#include "../GradientRestriction.hpp"
 #include "../DynamicTrainer.hpp"
 #include "../DynamicTrainerBuilder.hpp"
+#include "../GradientRestriction.hpp"
+#include "../image/CharImage.hpp"
+#include "../image/IdxLabels.hpp"
+#include "../image/ImageRenderer.hpp"
 #include "../util/Util.hpp"
 #include "Network.hpp"
 #include <cassert>
@@ -54,7 +57,33 @@ struct Autoencoder::AutoencoderImpl {
     AutoencoderRestriction restriction;
     vector<TrainingSample> noisySamples = getNoisySamples(samples, dataType);
     trainer->Train(*(network.get()), noisySamples, 1000, &restriction);
+
+    // debugNetworkVisually(network.get(), noisySamples);
     return network->LayerWeights(0);
+  }
+
+  void debugNetworkVisually(Network *network, const vector<TrainingSample> &noisySamples) {
+    cout << "woo" << endl;
+    for (const auto &sample : noisySamples) {
+      Vector output = network->Process(sample.input);
+
+      CharImage inImg(28, 28, sampleToVector(sample.input));
+      ImageRenderer::RenderImage(inImg);
+      // getchar();
+
+      CharImage outImg(28, 28, sampleToVector(output));
+      ImageRenderer::RenderImage(outImg);
+      // getchar();
+    }
+    cout << "shit" << endl;
+  }
+
+  vector<float> sampleToVector(const Vector &s) {
+    vector<float> result;
+    for (int i = 0; i < s.rows(); i++) {
+      result.push_back(s(i));
+    }
+    return result;
   }
 
   void conditionInitialWeights(Network &network) {
@@ -95,9 +124,9 @@ struct Autoencoder::AutoencoderImpl {
   uptr<Trainer> getTrainer(unsigned numSamples) {
     DynamicTrainerBuilder builder;
 
-    builder.StartLearnRate(0.1f)
+    builder.StartLearnRate(0.01f)
         .FinishLearnRate(0.0001f)
-        .MaxLearnRate(0.1f)
+        .MaxLearnRate(0.01f)
         .Momentum(0.25f)
         .StartSamplesPerIter(numSamples / 20)
         .FinishSamplesPerIter(numSamples / 10)

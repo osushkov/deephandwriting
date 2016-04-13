@@ -45,7 +45,8 @@ struct DynamicTrainer::DynamicTrainerImpl {
     this->rnd = mt19937(rd());
   }
 
-  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations, GradientRestriction *restriction) {
+  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations,
+             GradientRestriction *restriction) {
     shuffle(trainingSamples.begin(), trainingSamples.end(), rnd);
     numCompletePasses = 0;
     curSamplesIndex = 0;
@@ -88,9 +89,11 @@ struct DynamicTrainer::DynamicTrainerImpl {
       }
 
       updateLearnRate(i, iterations, gradientError.second);
-      if (gradientError.second <= 1.05f*prevSampleError) {
+      if (gradientError.second <= 1.05f * prevSampleError) {
         network.ApplyUpdate(momentum * weightGradientRate);
         prevSampleError = gradientError.second;
+      } else {
+        momentum *= 0.1f;
       }
 
       for_each(trainingCallbacks, [&network, &gradientError, i](const NetworkTrainerCallback &cb) {
@@ -107,10 +110,10 @@ struct DynamicTrainer::DynamicTrainerImpl {
     curLearnRate *= pow(epsilonRate / startLearnRate, 1.0f / iterations);
 
     if (curIter > 0 && useSpeedup) {
-      if (sampleError < 0.95f*prevSampleError) {
+      if (sampleError < 0.95f * prevSampleError) {
         curLearnRate *= 1.05f;
         curLearnRate = min<float>(curLearnRate, maxLearnRate);
-      } else if (sampleError > 1.05f*prevSampleError) {
+      } else if (sampleError > 1.05f * prevSampleError) {
         curLearnRate *= 0.9f;
       }
     }

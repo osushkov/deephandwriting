@@ -159,12 +159,12 @@ float testNetwork(Network &network, const std::vector<TrainingSample> &evalSampl
 uptr<Trainer> getTrainer(void) {
   DynamicTrainerBuilder builder;
 
-  builder.StartLearnRate(0.1f)
-      .FinishLearnRate(0.01f)
-      .MaxLearnRate(0.1f)
+  builder.StartLearnRate(0.01f)
+      .FinishLearnRate(0.001f)
+      .MaxLearnRate(0.01f)
       .Momentum(0.5f)
       .StartSamplesPerIter(1000)
-      .FinishSamplesPerIter(10000)
+      .FinishSamplesPerIter(5000)
       .UseMomentum(true)
       .UseSpeedup(true)
       .UseWeightRates(true);
@@ -179,7 +179,9 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
-  spec.hiddenLayers = {make_pair(inputSize, hiddenActivation)};
+  spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
+                       make_pair(inputSize / 2, hiddenActivation),
+                       make_pair(inputSize / 4, hiddenActivation)};
 
   return Network(spec);
 }
@@ -189,24 +191,43 @@ Network loadNetwork(string path) {
   return Network(networkIn);
 }
 
+vector<TrainingSample> autoencodedSamplesFromTrainingData(const vector<TrainingSample> &samples) {
+  vector<TrainingSample> result;
+  result.reserve(samples.size());
+  for (const auto &ts : samples) {
+    result.push_back(TrainingSample(ts.input, ts.input));
+  }
+  return result;
+}
+
+vector<TrainingSample> autoencodedSamplesFromNetworkLayer(Network &network, unsigned layer,
+                                                          const vector<TrainingSample> &samples) {
+  vector<TrainingSample> result;
+  result.reserve(samples.size());
+  for (const auto &ts : samples) {
+    Vector v = network.Process(ts.input, layer);
+    result.push_back(TrainingSample(v, v));
+  }
+  return result;
+}
+
 void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples) {
   cout << "conditioning" << endl;
-  if (network.NumLayers() <= 1) {
-    return; // No hidden layers, nothing to condition.
+
+  for (unsigned layer = 0; layer < network.NumLayers() - 1; layer++) {
+    cout << "conditioning layer: " << layer << endl;
+    vector<TrainingSample> conditionSubsample =
+        layer == 0 ? autoencodedSamplesFromTrainingData(trainingSamples)
+                   : autoencodedSamplesFromNetworkLayer(network, layer, trainingSamples);
+
+    EncodedDataType inputType =
+        layer == 0 ? EncodedDataType::BOUNDED_NORMALISED : EncodedDataType::UNBOUNDED;
+
+    Autoencoder autoEncoder(0.25f);
+    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<ReLU>(0.01f),
+                                               conditionSubsample, inputType);
+    network.SetLayerWeights(layer, hl);
   }
-
-  vector<TrainingSample> conditionSubsample;
-  for (const auto &ts : trainingSamples) {
-    conditionSubsample.push_back(TrainingSample(ts.input, ts.input));
-  }
-
-  auto af = make_unique<ReLU>(0.01f);
-
-  Autoencoder autoEncoder(0.25f);
-  Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(0), move(af), conditionSubsample,
-                                             EncodedDataType::BOUNDED_NORMALISED);
-
-  network.SetLayerWeights(0, hl);
 
   cout << "finished conditioning" << endl;
 }
@@ -230,8 +251,8 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
 
   cout << "starting training..." << endl;
 
-  AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 20000, &restrictLayers);
+  // AllowSelectLayers restrictLayers({1});
+  trainer->Train(network, trainingSamples, 20000, nullptr);
   cout << "finished" << endl;
 }
 
@@ -253,14 +274,14 @@ void eval(Network &network, const vector<TrainingSample> &testSamples) {
 void testAutoencoder(const vector<TrainingSample> &digitSamples) {
   vector<TrainingSample> samples;
   for (const auto &ds : digitSamples) {
-    if (samples.size() > 10000) {
+    if (samples.size() > 1000) {
       break;
     }
     samples.push_back(TrainingSample(ds.input, ds.input));
   }
 
-  Autoencoder encoder(0.2f);
-  encoder.ComputeHiddenLayer(300, make_unique<ReLU>(0.01f), samples,
+  Autoencoder encoder(0.25f);
+  encoder.ComputeHiddenLayer(1000, make_unique<ReLU>(0.01f), samples,
                              EncodedDataType::BOUNDED_NORMALISED);
 }
 
