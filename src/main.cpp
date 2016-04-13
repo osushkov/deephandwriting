@@ -179,7 +179,7 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
-  spec.hiddenLayers = {make_pair(300, hiddenActivation)};
+  spec.hiddenLayers = {make_pair(inputSize, hiddenActivation)};
 
   return Network(spec);
 }
@@ -196,12 +196,7 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
   }
 
   vector<TrainingSample> conditionSubsample;
-  conditionSubsample.reserve(10000);
-
   for (const auto &ts : trainingSamples) {
-    if (conditionSubsample.size() > 10000) {
-      break;
-    }
     conditionSubsample.push_back(TrainingSample(ts.input, ts.input));
   }
 
@@ -218,7 +213,7 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
 
 void learn(Network &network, vector<TrainingSample> &trainingSamples,
            vector<TrainingSample> &testSamples) {
-  // conditionNetwork(network, trainingSamples);
+  conditionNetwork(network, trainingSamples);
 
   auto trainer = getTrainer();
   trainer->AddProgressCallback(
@@ -234,7 +229,9 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
       });
 
   cout << "starting training..." << endl;
-  trainer->Train(network, trainingSamples, 20000);
+
+  AllowSelectLayers restrictLayers({1});
+  trainer->Train(network, trainingSamples, 20000, &restrictLayers);
   cout << "finished" << endl;
 }
 

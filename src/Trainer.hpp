@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GradientRestriction.hpp"
 #include "common/Common.hpp"
 #include "neuralnetwork/Network.hpp"
 
@@ -15,7 +16,7 @@ public:
   virtual ~Trainer() {}
 
   virtual void Train(Network &network, vector<TrainingSample> &trainingSamples,
-                     unsigned iterations) = 0;
+                     unsigned iterations, GradientRestriction *restriction) = 0;
 
   virtual void AddProgressCallback(NetworkTrainerCallback callback) = 0;
 };

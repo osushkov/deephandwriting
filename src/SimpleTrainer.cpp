@@ -12,7 +12,7 @@ SimpleTrainer::SimpleTrainer(float startLearnRate, float endLearnRate, unsigned 
 }
 
 void SimpleTrainer::Train(Network &network, vector<TrainingSample> &trainingSamples,
-                          unsigned iterations) {
+                          unsigned iterations, GradientRestriction *restriction) {
 
   random_shuffle(trainingSamples.begin(), trainingSamples.end());
   curSamplesIndex = 0;

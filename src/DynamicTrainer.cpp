@@ -45,15 +45,14 @@ struct DynamicTrainer::DynamicTrainerImpl {
     this->rnd = mt19937(rd());
   }
 
-  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations) {
-
+  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations, GradientRestriction *restriction) {
     shuffle(trainingSamples.begin(), trainingSamples.end(), rnd);
     numCompletePasses = 0;
     curSamplesIndex = 0;
     curSamplesOffset = 0;
 
     curLearnRate = startLearnRate;
-    prevSampleError = 0.0f;
+    prevSampleError = 1000000.0f; // TODO: make this MAX_FLOAT
 
     Tensor momentum;
 
@@ -63,8 +62,10 @@ struct DynamicTrainer::DynamicTrainerImpl {
     for (unsigned i = 0; i < iterations; i++) {
       TrainingProvider samplesProvider = getStochasticSamples(trainingSamples, i, iterations);
       pair<Tensor, float> gradientError = network.ComputeGradient(samplesProvider);
+      if (restriction != nullptr) {
+        restriction->RestrictGradient(gradientError.first);
+      }
 
-      // restrictGradient(gradientError.first);
       gradientError.first *= -curLearnRate;
 
       if (i == 0) {
@@ -86,32 +87,17 @@ struct DynamicTrainer::DynamicTrainerImpl {
         prevGradient = gradientError.first;
       }
 
-      network.ApplyUpdate(momentum * weightGradientRate);
       updateLearnRate(i, iterations, gradientError.second);
+      if (gradientError.second <= 1.05f*prevSampleError) {
+        network.ApplyUpdate(momentum * weightGradientRate);
+        prevSampleError = gradientError.second;
+      }
 
       for_each(trainingCallbacks, [&network, &gradientError, i](const NetworkTrainerCallback &cb) {
         cb(network, gradientError.second, i);
       });
     }
   }
-
-  // void restrictGradient(Tensor &gradient) {
-  //   assert(gradient.NumLayers() == 2);
-  //
-  //   // cout << gradient(0).rows() << " !! " << gradient(1).cols() << endl;
-  //   // cout << gradient(0).cols() << " !! " << gradient(1).rows() << endl;
-  //   //
-  //   // assert(gradient(0).rows() == gradient(1).cols());
-  //   // assert(gradient(0).cols() == gradient(1).rows());
-  //
-  //   Tensor orig = gradient;
-  //   for (int r = 0; r < gradient(0).rows(); r++) {
-  //     for (int c = 0; c < gradient(1).rows(); c++) {
-  //       gradient(0)(r, c) = (orig(0)(r, c) + orig(1)(c, r)) / 2.0f;
-  //       gradient(1)(c, r) = (orig(0)(r, c) + orig(1)(c, r)) / 2.0f;
-  //     }
-  //   }
-  // }
 
   void AddProgressCallback(NetworkTrainerCallback callback) {
     trainingCallbacks.push_back(callback);
@@ -121,15 +107,13 @@ struct DynamicTrainer::DynamicTrainerImpl {
     curLearnRate *= pow(epsilonRate / startLearnRate, 1.0f / iterations);
 
     if (curIter > 0 && useSpeedup) {
-      if (sampleError < prevSampleError) {
+      if (sampleError < 0.95f*prevSampleError) {
         curLearnRate *= 1.05f;
         curLearnRate = min<float>(curLearnRate, maxLearnRate);
-      } else if (sampleError > 1.1f * prevSampleError) {
-        curLearnRate *= 0.95f;
+      } else if (sampleError > 1.05f*prevSampleError) {
+        curLearnRate *= 0.9f;
       }
     }
-
-    prevSampleError = sampleError;
   }
 
   TrainingProvider getStochasticSamples(vector<TrainingSample> &allSamples, unsigned curIter,
@@ -205,8 +189,8 @@ DynamicTrainer::DynamicTrainer(float startLearnRate, float epsilonRate, float ma
 DynamicTrainer::~DynamicTrainer() = default;
 
 void DynamicTrainer::Train(Network &network, vector<TrainingSample> &trainingSamples,
-                           unsigned iterations) {
-  impl->Train(network, trainingSamples, iterations);
+                           unsigned iterations, GradientRestriction *restriction) {
+  impl->Train(network, trainingSamples, iterations, restriction);
 }
 
 void DynamicTrainer::AddProgressCallback(NetworkTrainerCallback callback) {

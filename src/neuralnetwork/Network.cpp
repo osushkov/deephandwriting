@@ -248,8 +248,8 @@ private:
 
   Vector getInputWithBias(const Vector &noBiasInput) const {
     Vector result(noBiasInput.rows() + 1);
-    result(0) = 1.0f;
-    result.bottomRightCorner(noBiasInput.rows(), 1) = noBiasInput;
+    result(noBiasInput.rows()) = 1.0f;
+    result.topRightCorner(noBiasInput.rows(), 1) = noBiasInput;
     return result;
   }
 };

@@ -11,7 +11,7 @@ public:
   virtual ~SimpleTrainer() = default;
 
   void Train(Network &network, vector<TrainingSample> &trainingSamples,
-             unsigned iterations) override;
+             unsigned iterations, GradientRestriction *restriction) override;
 
   void AddProgressCallback(NetworkTrainerCallback callback) override;
 
