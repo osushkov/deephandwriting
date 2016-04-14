@@ -156,22 +156,6 @@ float testNetwork(Network &network, const std::vector<TrainingSample> &evalSampl
   return 1.0f - (numCorrect / static_cast<float>(evalSamples.size()));
 }
 
-uptr<Trainer> getTrainer(void) {
-  DynamicTrainerBuilder builder;
-
-  builder.StartLearnRate(0.01f)
-      .FinishLearnRate(0.001f)
-      .MaxLearnRate(0.01f)
-      .Momentum(0.5f)
-      .StartSamplesPerIter(1000)
-      .FinishSamplesPerIter(5000)
-      .UseMomentum(true)
-      .UseSpeedup(true)
-      .UseWeightRates(true);
-
-  return builder.Build();
-}
-
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   auto hiddenActivation = make_shared<ReLU>(0.01f);
 
@@ -179,9 +163,10 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
+  // spec.hiddenLayers = {make_pair(inputSize, hiddenActivation)};
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
-                       make_pair(inputSize / 2, hiddenActivation),
                        make_pair(inputSize / 4, hiddenActivation)};
+                      //  make_pair(inputSize / 2, hiddenActivation)};
 
   return Network(spec);
 }
@@ -232,6 +217,22 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
   cout << "finished conditioning" << endl;
 }
 
+uptr<Trainer> getTrainer(void) {
+  DynamicTrainerBuilder builder;
+
+  builder.StartLearnRate(0.001f)
+      .FinishLearnRate(0.0001f)
+      .MaxLearnRate(0.1f)
+      .Momentum(0.0f)
+      .StartSamplesPerIter(1000)
+      .FinishSamplesPerIter(5000)
+      .UseMomentum(true)
+      .UseSpeedup(true)
+      .UseWeightRates(true);
+
+  return builder.Build();
+}
+
 void learn(Network &network, vector<TrainingSample> &trainingSamples,
            vector<TrainingSample> &testSamples) {
   conditionNetwork(network, trainingSamples);
@@ -252,7 +253,7 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
   cout << "starting training..." << endl;
 
   // AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 20000, nullptr);
+  trainer->Train(network, trainingSamples, 10000, nullptr);
   cout << "finished" << endl;
 }
 
@@ -281,7 +282,7 @@ void testAutoencoder(const vector<TrainingSample> &digitSamples) {
   }
 
   Autoencoder encoder(0.25f);
-  encoder.ComputeHiddenLayer(1000, make_unique<ReLU>(0.01f), samples,
+  encoder.ComputeHiddenLayer(350, make_unique<ReLU>(0.01f), samples,
                              EncodedDataType::BOUNDED_NORMALISED);
 }
 

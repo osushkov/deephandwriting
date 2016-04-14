@@ -19,7 +19,9 @@ class Network {
 public:
   static void OutputDebugging(void);
 
-  Network(Network &&other);
+  Network(const Network &other); // copy ctor
+  Network(Network &&other); // move ctor
+
   Network(const NetworkSpec &spec);
   Network(istream &stream); // TODO: this constructor doesnt handle different activation funcs.
 
@@ -34,6 +36,7 @@ public:
   unsigned NumLayers(void) const;
   unsigned LayerSize(unsigned layer) const;
 
+  Tensor Weights(void) const;
   Matrix LayerWeights(unsigned layer) const;
   void SetLayerWeights(unsigned layer, const Matrix &weights);
 

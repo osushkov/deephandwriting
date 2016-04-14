@@ -59,6 +59,14 @@ struct Network::NetworkImpl {
     }
   }
 
+  NetworkImpl(const NetworkImpl &other)
+      : numInputs(other.numInputs), numOutputs(other.numOutputs),
+        numLayers(other.numLayers) {
+    layerWeights = other.layerWeights;
+    layerActivations = other.layerActivations;
+    zeroGradient = other.zeroGradient;
+  }
+
   NetworkImpl(unsigned numInputs, unsigned numOutputs, unsigned numLayers,
               const Tensor &layerWeights)
       : numInputs(numInputs), numOutputs(numOutputs), numLayers(numLayers),
@@ -139,15 +147,19 @@ private:
   Matrix createLayer(unsigned inputSize, unsigned layerSize) {
     assert(inputSize > 0 && layerSize > 0);
 
+    float ic = 0.1f;
+
     unsigned numRows = layerSize;
     unsigned numCols = inputSize + 1; // +1 accounts for bias input
-    float initRange = 1.0f / sqrtf(numCols);
+    float initRange = 1.0f / sqrtf(numCols * ic);
 
     Matrix result(numRows, numCols);
+    result.fill(0.0f);
 
     for (unsigned r = 0; r < result.rows(); r++) {
-      for (unsigned c = 0; c < result.cols(); c++) {
-        result(r, c) = Util::RandInterval(-initRange, initRange);
+      for (unsigned c = 0; c < static_cast<unsigned>(result.cols() * ic); c++) {
+        unsigned col = rand() % result.cols();
+        result(r, col) = Util::RandInterval(-initRange, initRange);
       }
     }
 
@@ -253,7 +265,9 @@ private:
   }
 };
 
+Network::Network(const Network &other) : impl(new NetworkImpl(*other.impl)) {}
 Network::Network(Network &&other) : impl(move(other.impl)) {}
+
 Network::Network(const NetworkSpec &spec) : impl(new NetworkImpl(spec)) {}
 
 Network::Network(istream &stream) {
@@ -284,6 +298,8 @@ void Network::ApplyUpdate(const Tensor &weightUpdates) { impl->ApplyUpdate(weigh
 unsigned Network::NumLayers(void) const { return impl->layerWeights.NumLayers(); }
 
 unsigned Network::LayerSize(unsigned layer) const { return impl->layerWeights(layer).rows(); }
+
+Tensor Network::Weights(void) const { return impl->layerWeights; }
 
 Matrix Network::LayerWeights(unsigned layer) const { return impl->LayerWeights(layer); }
 
