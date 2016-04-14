@@ -60,8 +60,7 @@ struct Network::NetworkImpl {
   }
 
   NetworkImpl(const NetworkImpl &other)
-      : numInputs(other.numInputs), numOutputs(other.numOutputs),
-        numLayers(other.numLayers) {
+      : numInputs(other.numInputs), numOutputs(other.numOutputs), numLayers(other.numLayers) {
     layerWeights = other.layerWeights;
     layerActivations = other.layerActivations;
     zeroGradient = other.zeroGradient;
@@ -147,7 +146,7 @@ private:
   Matrix createLayer(unsigned inputSize, unsigned layerSize) {
     assert(inputSize > 0 && layerSize > 0);
 
-    float ic = 0.1f;
+    float ic = 0.2f;
 
     unsigned numRows = layerSize;
     unsigned numCols = inputSize + 1; // +1 accounts for bias input

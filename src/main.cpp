@@ -157,16 +157,16 @@ float testNetwork(Network &network, const std::vector<TrainingSample> &evalSampl
 }
 
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
-  auto hiddenActivation = make_shared<ReLU>(0.01f);
+  auto hiddenActivation = make_shared<Logistic>();
 
   NetworkSpec spec;
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
-  // spec.hiddenLayers = {make_pair(inputSize, hiddenActivation)};
+  // spec.hiddenLayers = {make_pair(inputSize / 4, hiddenActivation)};
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
+                       make_pair(inputSize / 2, hiddenActivation),
                        make_pair(inputSize / 4, hiddenActivation)};
-                      //  make_pair(inputSize / 2, hiddenActivation)};
 
   return Network(spec);
 }
@@ -205,11 +205,11 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
         layer == 0 ? autoencodedSamplesFromTrainingData(trainingSamples)
                    : autoencodedSamplesFromNetworkLayer(network, layer, trainingSamples);
 
-    EncodedDataType inputType =
-        layer == 0 ? EncodedDataType::BOUNDED_NORMALISED : EncodedDataType::UNBOUNDED;
+    EncodedDataType inputType = EncodedDataType::BOUNDED_NORMALISED;
+    // layer == 0 ? EncodedDataType::BOUNDED_NORMALISED : EncodedDataType::UNBOUNDED;
 
     Autoencoder autoEncoder(0.25f);
-    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<ReLU>(0.01f),
+    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<Logistic>(),
                                                conditionSubsample, inputType);
     network.SetLayerWeights(layer, hl);
   }
@@ -220,12 +220,12 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
 uptr<Trainer> getTrainer(void) {
   DynamicTrainerBuilder builder;
 
-  builder.StartLearnRate(0.001f)
+  builder.StartLearnRate(0.01f)
       .FinishLearnRate(0.0001f)
       .MaxLearnRate(0.1f)
       .Momentum(0.0f)
       .StartSamplesPerIter(1000)
-      .FinishSamplesPerIter(5000)
+      .FinishSamplesPerIter(1000)
       .UseMomentum(true)
       .UseSpeedup(true)
       .UseWeightRates(true);
@@ -275,14 +275,14 @@ void eval(Network &network, const vector<TrainingSample> &testSamples) {
 void testAutoencoder(const vector<TrainingSample> &digitSamples) {
   vector<TrainingSample> samples;
   for (const auto &ds : digitSamples) {
-    if (samples.size() > 1000) {
-      break;
-    }
+    // if (samples.size() > 1000) {
+    //   break;
+    // }
     samples.push_back(TrainingSample(ds.input, ds.input));
   }
 
   Autoencoder encoder(0.25f);
-  encoder.ComputeHiddenLayer(350, make_unique<ReLU>(0.01f), samples,
+  encoder.ComputeHiddenLayer(700, make_unique<Logistic>(), samples,
                              EncodedDataType::BOUNDED_NORMALISED);
 }
 

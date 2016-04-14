@@ -62,7 +62,8 @@ struct DynamicTrainer::DynamicTrainerImpl {
     for (unsigned i = 0; i < iterations; i++) {
       TrainingProvider samplesProvider = getStochasticSamples(trainingSamples, i, iterations);
 
-      pair<Tensor, float> gradientError = updateMomentum(momentum, network, samplesProvider, restriction);
+      pair<Tensor, float> gradientError =
+          updateMomentum(momentum, network, samplesProvider, restriction);
 
       if (i == 0) {
         prevGradient = gradientError.first;
@@ -78,14 +79,9 @@ struct DynamicTrainer::DynamicTrainerImpl {
       }
 
       updateGradientRMS(gradientError.first, rmsWeights);
-
       network.ApplyUpdate(momentum * weightGradientRate * rmsScaling(rmsWeights));
 
       curLearnRate *= pow(epsilonRate / startLearnRate, 1.0f / iterations);
-      if (gradientError.second > prevError) {
-        // curLearnRate *= 0.9f;
-      }
-
       prevError = gradientError.second;
 
       for_each(trainingCallbacks, [&network, &gradientError, i](const NetworkTrainerCallback &cb) {
@@ -95,7 +91,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
   }
 
   pair<Tensor, float> updateMomentum(Tensor &momentum, Network &network, TrainingProvider &samples,
-                        GradientRestriction *restriction) {
+                                     GradientRestriction *restriction) {
     Network cpy(network);
     cpy.ApplyUpdate(momentum * momentumAmount);
 
@@ -175,7 +171,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
           if ((prev >= 0.0f && cur >= 0.0f) || (prev <= 0.0f && cur <= 0.0f)) {
             rates(i)(y, x) += 0.05f;
           } else {
-            rates(i)(y, x) = 1.0f;
+            rates(i)(y, x) *= 0.95f;
           }
 
           rates(i)(y, x) = min(rates(i)(y, x), 10.0f);
@@ -205,10 +201,12 @@ struct DynamicTrainer::DynamicTrainerImpl {
     for (unsigned i = 0; i < result.NumLayers(); i++) {
       for (int y = 0; y < result(i).rows(); y++) {
         for (int x = 0; x < result(i).cols(); x++) {
-          result(i)(y, x) = min(1.0f / sqrtf(result(i)(y, x)), 100.0f);
+          result(i)(y, x) = 1.0f / sqrtf(rms(i)(y, x) + 0.01);
+          // cout << result(i)(y, x) << " ";
         }
       }
     }
+    // cout << endl;
     return result;
   }
 
