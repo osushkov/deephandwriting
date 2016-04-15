@@ -7,11 +7,12 @@
 
 using Vec1b = cv::Vec<unsigned char, 1>;
 
-ImageGenerator::ImageGenerator(float shiftX, float shiftY, float rotTheta)
-    : shiftX(shiftX), shiftY(shiftY), rotTheta(rotTheta) {
+ImageGenerator::ImageGenerator(float shiftX, float shiftY, float rotTheta, float dropoutRate)
+    : shiftX(shiftX), shiftY(shiftY), rotTheta(rotTheta), dropoutRate(dropoutRate) {
   assert(shiftX <= 1.0f);
   assert(shiftY <= 1.0f);
   assert(rotTheta <= M_PI);
+  assert(dropoutRate >= 0.0f && dropoutRate <= 1.0f);
 }
 
 vector<CharImage> ImageGenerator::GenerateImages(const CharImage &base, unsigned numImages) const {
@@ -79,5 +80,11 @@ CharImage ImageGenerator::transformToCharImage(const cv::Mat &src,
   warpAffine(rotated, translated, trans, src.size());
   // cv::transform(rotated, translated, trans);
 
-  return convertToCharImage(translated);
+  CharImage result = convertToCharImage(translated);
+  for (auto &p : result.pixels) {
+    if (Util::RandInterval(0.0, 1.0) < dropoutRate) {
+      p = 0.0f;
+    }
+  }
+  return result;
 }

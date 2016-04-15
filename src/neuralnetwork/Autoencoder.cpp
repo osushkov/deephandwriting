@@ -45,7 +45,7 @@ struct Autoencoder::AutoencoderImpl {
     spec.hiddenLayers = {make_pair(layerSize, move(hiddenFunc))};
 
     auto network = make_unique<Network>(spec);
-    // conditionInitialWeights(*network);
+    conditionInitialWeights(*network);
 
     auto trainer = getTrainer(samples.size());
     trainer->AddProgressCallback([](Network &network, float trainError, unsigned iter) {
@@ -54,9 +54,9 @@ struct Autoencoder::AutoencoderImpl {
       }
     });
 
-    // AutoencoderRestriction restriction;
+    AutoencoderRestriction restriction;
     vector<TrainingSample> noisySamples = getNoisySamples(samples, dataType);
-    trainer->Train(*(network.get()), noisySamples, 1000, nullptr);
+    trainer->Train(*(network.get()), noisySamples, 1500, &restriction);
 
     // debugNetworkVisually(network.get(), noisySamples);
     return network->LayerWeights(0);
@@ -128,8 +128,8 @@ struct Autoencoder::AutoencoderImpl {
         .FinishLearnRate(0.0001f)
         .MaxLearnRate(0.1f)
         .Momentum(0.25f)
-        .StartSamplesPerIter(1000)
-        .FinishSamplesPerIter(1000)
+        .StartSamplesPerIter(5000)
+        .FinishSamplesPerIter(5000)
         .UseMomentum(true)
         .UseSpeedup(true)
         .UseWeightRates(true);

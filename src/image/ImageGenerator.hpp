@@ -9,9 +9,10 @@ class ImageGenerator {
   float shiftX;
   float shiftY;
   float rotTheta;
+  float dropoutRate;
 
 public:
-  ImageGenerator(float shiftX, float shiftY, float rotTheta);
+  ImageGenerator(float shiftX, float shiftY, float rotTheta, float dropoutRate);
 
   vector<CharImage> GenerateImages(const CharImage &base, unsigned numImages) const;
 

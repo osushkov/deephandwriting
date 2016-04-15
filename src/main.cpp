@@ -34,10 +34,11 @@ static constexpr unsigned NUM_DERIVED_IMAGES = 5;
 
 static constexpr float GENERATED_IMAGE_SHIFT_X = 0.1f;
 static constexpr float GENERATED_IMAGE_SHIFT_Y = 0.1f;
-static constexpr float GENERATED_IMAGE_ROT_THETA = 15.0f * M_PI / 180.0f;
+static constexpr float GENERATED_IMAGE_ROT_THETA = 10.0f * M_PI / 180.0f;
+static constexpr float PIXEL_DROPOUT_RATE = 0.1f;
 
 static const ImageGenerator imageGenerator(GENERATED_IMAGE_SHIFT_X, GENERATED_IMAGE_SHIFT_Y,
-                                           GENERATED_IMAGE_ROT_THETA);
+                                           GENERATED_IMAGE_ROT_THETA, PIXEL_DROPOUT_RATE);
 
 map<int, vector<CharImage>> loadLabeledImages(string imagePath, string labelPath) {
   IdxImages imageLoader(imagePath);
@@ -221,11 +222,11 @@ uptr<Trainer> getTrainer(void) {
   DynamicTrainerBuilder builder;
 
   builder.StartLearnRate(0.01f)
-      .FinishLearnRate(0.0001f)
+      .FinishLearnRate(0.001f)
       .MaxLearnRate(0.1f)
-      .Momentum(0.0f)
-      .StartSamplesPerIter(1000)
-      .FinishSamplesPerIter(1000)
+      .Momentum(0.25f)
+      .StartSamplesPerIter(5000)
+      .FinishSamplesPerIter(5000)
       .UseMomentum(true)
       .UseSpeedup(true)
       .UseWeightRates(true);
@@ -242,7 +243,7 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
       [&trainingSamples, &testSamples](Network &network, float trainError, unsigned iter) {
         if (iter % 100 == 0) {
           float testWrong = testNetwork(network, testSamples);
-          cout << iter << "\t" << testWrong << endl;
+          cout << iter << "\t" << testWrong << " " << trainError << endl;
           // cout << iter << "\t" << trainError << "\t" << testWrong << endl;
 
           // float trainWrong = testNetwork(network, trainingSamples);
@@ -253,7 +254,7 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
   cout << "starting training..." << endl;
 
   // AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 10000, nullptr);
+  trainer->Train(network, trainingSamples, 20000, nullptr);
   cout << "finished" << endl;
 }
 
@@ -294,7 +295,7 @@ int main(int argc, char **argv) {
 
   cout << "loading training data" << endl;
   vector<TrainingSample> trainingSamples =
-      loadSamples("data/train_images.idx3", "data/train_labels.idx1", false);
+      loadSamples("data/train_images.idx3", "data/train_labels.idx1", true);
   random_shuffle(trainingSamples.begin(), trainingSamples.end());
   cout << "training data size: " << trainingSamples.size() << endl;
 

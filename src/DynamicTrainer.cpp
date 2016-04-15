@@ -175,7 +175,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
           }
 
           rates(i)(y, x) = min(rates(i)(y, x), 10.0f);
-          rates(i)(y, x) = max(rates(i)(y, x), 0.01f);
+          rates(i)(y, x) = max(rates(i)(y, x), 0.5f);
         }
       }
     }
@@ -201,7 +201,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
     for (unsigned i = 0; i < result.NumLayers(); i++) {
       for (int y = 0; y < result(i).rows(); y++) {
         for (int x = 0; x < result(i).cols(); x++) {
-          result(i)(y, x) = 1.0f / sqrtf(rms(i)(y, x) + 0.01);
+          result(i)(y, x) = 1.0f / sqrtf(rms(i)(y, x) + 0.001);
           // cout << result(i)(y, x) << " ";
         }
       }
