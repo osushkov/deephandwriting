@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../neuralnetwork/TrainingProvider.hpp"
 #include "Trainer.hpp"
-#include "neuralnetwork/TrainingProvider.hpp"
 
 #include <vector>
 
@@ -10,8 +10,8 @@ public:
   SimpleTrainer(float startLearnRate, float endLearnRate, unsigned stochasticSamples);
   virtual ~SimpleTrainer() = default;
 
-  void Train(Network &network, vector<TrainingSample> &trainingSamples,
-             unsigned iterations, GradientRestriction *restriction) override;
+  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations,
+             GradientRestriction *restriction) override;
 
   void AddProgressCallback(NetworkTrainerCallback callback) override;
 

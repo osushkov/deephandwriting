@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common/Common.hpp"
-#include "neuralnetwork/Tensor.hpp"
+#include "../common/Common.hpp"
+#include "../neuralnetwork/Tensor.hpp"
 #include <set>
 
-class GradientRestriction{
+class GradientRestriction {
 public:
   virtual ~GradientRestriction() = default;
 

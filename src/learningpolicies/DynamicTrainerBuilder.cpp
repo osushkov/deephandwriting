@@ -1,6 +1,6 @@
 
 #include "DynamicTrainerBuilder.hpp"
-#include "common/Common.hpp"
+#include "../common/Common.hpp"
 
 #include <cassert>
 

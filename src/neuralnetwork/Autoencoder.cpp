@@ -1,11 +1,11 @@
 
 #include "Autoencoder.hpp"
-#include "../DynamicTrainer.hpp"
-#include "../DynamicTrainerBuilder.hpp"
-#include "../GradientRestriction.hpp"
 #include "../image/CharImage.hpp"
 #include "../image/IdxLabels.hpp"
 #include "../image/ImageRenderer.hpp"
+#include "../learningpolicies/DynamicTrainer.hpp"
+#include "../learningpolicies/DynamicTrainerBuilder.hpp"
+#include "../learningpolicies/GradientRestriction.hpp"
 #include "../util/Util.hpp"
 #include "Network.hpp"
 #include <cassert>

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Trainer.hpp"
+#include "../neuralnetwork/TrainingProvider.hpp"
 #include "GradientRestriction.hpp"
-#include "neuralnetwork/TrainingProvider.hpp"
+#include "Trainer.hpp"
 #include <random>
 
 class DynamicTrainer : public Trainer {
@@ -13,8 +13,8 @@ public:
 
   virtual ~DynamicTrainer();
 
-  void Train(Network &network, vector<TrainingSample> &trainingSamples,
-             unsigned iterations, GradientRestriction *restriction) override;
+  void Train(Network &network, vector<TrainingSample> &trainingSamples, unsigned iterations,
+             GradientRestriction *restriction) override;
 
   void AddProgressCallback(NetworkTrainerCallback callback) override;
 

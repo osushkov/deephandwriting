@@ -13,14 +13,14 @@
 #include <string>
 #include <vector>
 
-#include "DynamicTrainer.hpp"
-#include "DynamicTrainerBuilder.hpp"
-#include "SimpleTrainer.hpp"
 #include "common/Common.hpp"
 #include "image/IdxImages.hpp"
 #include "image/IdxLabels.hpp"
 #include "image/ImageGenerator.hpp"
 #include "image/ImageWriter.hpp"
+#include "learningpolicies/DynamicTrainer.hpp"
+#include "learningpolicies/DynamicTrainerBuilder.hpp"
+#include "learningpolicies/SimpleTrainer.hpp"
 #include "neuralnetwork/Autoencoder.hpp"
 #include "neuralnetwork/Network.hpp"
 #include "util/Timer.hpp"

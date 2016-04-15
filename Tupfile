@@ -1,2 +1,7 @@
 include_rules
-: src/*.o src/neuralnetwork/nn.a src/image/image.a src/util/util.a |> $(CC) %f -o %o $(CLFLAGS) |> deephandwriting
+: src/*.o \
+src/learningpolicies/lp.a \
+src/neuralnetwork/nn.a \
+src/image/image.a \
+src/util/util.a \
+|> $(CC) %f -o %o $(CLFLAGS) |> deephandwriting

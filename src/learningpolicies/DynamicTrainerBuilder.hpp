@@ -1,8 +1,8 @@
 
 #pragma once
 
+#include "../common/Common.hpp"
 #include "DynamicTrainer.hpp"
-#include "common/Common.hpp"
 
 class DynamicTrainerBuilder {
   float startLearnRate;
@@ -22,14 +22,14 @@ public:
   DynamicTrainerBuilder();
   uptr<DynamicTrainer> Build(void) const;
 
-  DynamicTrainerBuilder& StartLearnRate(float);
-  DynamicTrainerBuilder& FinishLearnRate(float);
+  DynamicTrainerBuilder &StartLearnRate(float);
+  DynamicTrainerBuilder &FinishLearnRate(float);
 
-  DynamicTrainerBuilder& MaxLearnRate(float);
-  DynamicTrainerBuilder& Momentum(float);
+  DynamicTrainerBuilder &MaxLearnRate(float);
+  DynamicTrainerBuilder &Momentum(float);
 
-  DynamicTrainerBuilder& StartSamplesPerIter(unsigned);
-  DynamicTrainerBuilder& FinishSamplesPerIter(unsigned);
+  DynamicTrainerBuilder &StartSamplesPerIter(unsigned);
+  DynamicTrainerBuilder &FinishSamplesPerIter(unsigned);
 
   DynamicTrainerBuilder &UseMomentum(bool);
   DynamicTrainerBuilder &UseSpeedup(bool);
