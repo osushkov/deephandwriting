@@ -17,7 +17,7 @@ static constexpr unsigned NUM_DERIVED_IMAGES = 5;
 static constexpr float GENERATED_IMAGE_SHIFT_X = 0.1f;
 static constexpr float GENERATED_IMAGE_SHIFT_Y = 0.1f;
 static constexpr float GENERATED_IMAGE_ROT_THETA = 10.0f * M_PI / 180.0f;
-static constexpr float PIXEL_DROPOUT_RATE = 0.1f;
+static constexpr float PIXEL_DROPOUT_RATE = 0.0f;
 
 static const ImageGenerator imageGenerator(GENERATED_IMAGE_SHIFT_X, GENERATED_IMAGE_SHIFT_Y,
                                            GENERATED_IMAGE_ROT_THETA, PIXEL_DROPOUT_RATE);
