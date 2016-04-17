@@ -124,10 +124,10 @@ struct Autoencoder::AutoencoderImpl {
   uptr<Trainer> getTrainer(unsigned numSamples) {
     DynamicTrainerBuilder builder;
 
-    builder.StartLearnRate(0.001f)
+    builder.StartLearnRate(0.01f)
         .FinishLearnRate(0.0001f)
         .MaxLearnRate(0.1f)
-        .Momentum(0.25f)
+        .Momentum(0.5f)
         .StartSamplesPerIter(5000)
         .FinishSamplesPerIter(5000)
         .UseMomentum(true)
