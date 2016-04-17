@@ -4,6 +4,7 @@
 #include "DataLoader.hpp"
 #include "ExperimentUtils.hpp"
 #include "common/Common.hpp"
+#include "learningpolicies/AdamTrainer.hpp"
 #include "learningpolicies/DynamicTrainer.hpp"
 #include "learningpolicies/DynamicTrainerBuilder.hpp"
 #include "learningpolicies/SimpleTrainer.hpp"
@@ -172,17 +173,18 @@ void trainClassifier(Network &network, vector<TrainingSample> &trainingSamples,
 }
 
 uptr<Trainer> getTrainer(void) {
-  DynamicTrainerBuilder builder;
-
-  builder.StartLearnRate(0.001f)
-      .FinishLearnRate(0.0001f)
-      .MaxLearnRate(0.1f)
-      .Momentum(0.5f)
-      .StartSamplesPerIter(5000)
-      .FinishSamplesPerIter(5000)
-      .UseMomentum(true)
-      .UseSpeedup(true)
-      .UseWeightRates(true);
-
-  return builder.Build();
+  return uptr<Trainer>(new AdamTrainer());
+  // DynamicTrainerBuilder builder;
+  //
+  // builder.StartLearnRate(0.001f)
+  //     .FinishLearnRate(0.0001f)
+  //     .MaxLearnRate(0.1f)
+  //     .Momentum(0.5f)
+  //     .StartSamplesPerIter(5000)
+  //     .FinishSamplesPerIter(5000)
+  //     .UseMomentum(true)
+  //     .UseSpeedup(true)
+  //     .UseWeightRates(true);
+  //
+  // return builder.Build();
 }

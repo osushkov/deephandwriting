@@ -3,6 +3,7 @@
 #include "../image/CharImage.hpp"
 #include "../image/IdxLabels.hpp"
 #include "../image/ImageRenderer.hpp"
+#include "../learningpolicies/AdamTrainer.hpp"
 #include "../learningpolicies/DynamicTrainer.hpp"
 #include "../learningpolicies/DynamicTrainerBuilder.hpp"
 #include "../learningpolicies/GradientRestriction.hpp"
@@ -122,19 +123,20 @@ struct Autoencoder::AutoencoderImpl {
   }
 
   uptr<Trainer> getTrainer(unsigned numSamples) {
-    DynamicTrainerBuilder builder;
-
-    builder.StartLearnRate(0.01f)
-        .FinishLearnRate(0.0001f)
-        .MaxLearnRate(0.1f)
-        .Momentum(0.5f)
-        .StartSamplesPerIter(5000)
-        .FinishSamplesPerIter(5000)
-        .UseMomentum(true)
-        .UseSpeedup(true)
-        .UseWeightRates(true);
-
-    return builder.Build();
+    return uptr<Trainer>(new AdamTrainer());
+    // DynamicTrainerBuilder builder;
+    //
+    // builder.StartLearnRate(0.01f)
+    //     .FinishLearnRate(0.0001f)
+    //     .MaxLearnRate(0.1f)
+    //     .Momentum(0.5f)
+    //     .StartSamplesPerIter(5000)
+    //     .FinishSamplesPerIter(5000)
+    //     .UseMomentum(true)
+    //     .UseSpeedup(true)
+    //     .UseWeightRates(true);
+    //
+    // return builder.Build();
   }
 
   uptr<ActivationFunc> activationFuncForData(EncodedDataType dataType) {
