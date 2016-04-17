@@ -201,7 +201,7 @@ struct DynamicTrainer::DynamicTrainerImpl {
     for (unsigned i = 0; i < result.NumLayers(); i++) {
       for (int y = 0; y < result(i).rows(); y++) {
         for (int x = 0; x < result(i).cols(); x++) {
-          result(i)(y, x) = 1.0f / sqrtf(rms(i)(y, x) + 0.001);
+          result(i)(y, x) = 1.0f / sqrtf(rms(i)(y, x) + 0.01);
           // cout << result(i)(y, x) << " ";
         }
       }

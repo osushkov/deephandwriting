@@ -2,21 +2,9 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include <cmath>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <random>
-#include <sstream>
-#include <string>
-#include <vector>
-
 #include "ConditionedDeepNN.hpp"
+#include "StackedAutoencoders.hpp"
 #include "common/Common.hpp"
-
-using Eigen::MatrixXd;
 
 // void testAutoencoder(const vector<TrainingSample> &digitSamples) {
 //   vector<TrainingSample> samples;
@@ -37,7 +25,8 @@ int main(int argc, char **argv) {
   srand(1234);
 
   // testAutoencoder(trainingSamples);
-  ConditionedDeepNN::TrainAndEvaluate();
+  // ConditionedDeepNN::TrainAndEvaluate();
+  StackedAutoencoders::TrainAndEvaluate();
 
   return 0;
 }

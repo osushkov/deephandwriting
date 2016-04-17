@@ -56,7 +56,7 @@ struct Autoencoder::AutoencoderImpl {
 
     AutoencoderRestriction restriction;
     vector<TrainingSample> noisySamples = getNoisySamples(samples, dataType);
-    trainer->Train(*(network.get()), noisySamples, 1500, &restriction);
+    trainer->Train(*(network.get()), noisySamples, 2000, &restriction);
 
     // debugNetworkVisually(network.get(), noisySamples);
     return network->LayerWeights(0);
@@ -124,7 +124,7 @@ struct Autoencoder::AutoencoderImpl {
   uptr<Trainer> getTrainer(unsigned numSamples) {
     DynamicTrainerBuilder builder;
 
-    builder.StartLearnRate(0.01f)
+    builder.StartLearnRate(0.001f)
         .FinishLearnRate(0.0001f)
         .MaxLearnRate(0.1f)
         .Momentum(0.25f)
