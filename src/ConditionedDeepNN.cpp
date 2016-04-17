@@ -4,6 +4,7 @@
 #include "DataLoader.hpp"
 #include "ExperimentUtils.hpp"
 #include "common/Common.hpp"
+#include "learningpolicies/AdamTrainer.hpp"
 #include "learningpolicies/DynamicTrainer.hpp"
 #include "learningpolicies/DynamicTrainerBuilder.hpp"
 #include "learningpolicies/SimpleTrainer.hpp"
@@ -72,8 +73,7 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.outputFunc = make_shared<Logistic>();
   // spec.hiddenLayers = {make_pair(inputSize / 4, hiddenActivation)};
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
-                       make_pair(inputSize / 2, hiddenActivation),
-                       make_pair(inputSize / 4, hiddenActivation)};
+                       make_pair(inputSize / 2, hiddenActivation)};
 
   return Network(spec);
 }
@@ -120,19 +120,20 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
 }
 
 uptr<Trainer> getTrainer(void) {
-  DynamicTrainerBuilder builder;
-
-  builder.StartLearnRate(0.01f)
-      .FinishLearnRate(0.001f)
-      .MaxLearnRate(0.1f)
-      .Momentum(0.25f)
-      .StartSamplesPerIter(5000)
-      .FinishSamplesPerIter(5000)
-      .UseMomentum(true)
-      .UseSpeedup(true)
-      .UseWeightRates(true);
-
-  return builder.Build();
+  return uptr<Trainer>(new AdamTrainer());
+  // DynamicTrainerBuilder builder;
+  //
+  // builder.StartLearnRate(0.01f)
+  //     .FinishLearnRate(0.001f)
+  //     .MaxLearnRate(0.1f)
+  //     .Momentum(0.25f)
+  //     .StartSamplesPerIter(5000)
+  //     .FinishSamplesPerIter(5000)
+  //     .UseMomentum(true)
+  //     .UseSpeedup(true)
+  //     .UseWeightRates(true);
+  //
+  // return builder.Build();
 }
 
 void learn(Network &network, vector<TrainingSample> &trainingSamples,

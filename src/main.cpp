@@ -25,8 +25,8 @@ int main(int argc, char **argv) {
   srand(1234);
 
   // testAutoencoder(trainingSamples);
-  // ConditionedDeepNN::TrainAndEvaluate();
-  StackedAutoencoders::TrainAndEvaluate();
+  ConditionedDeepNN::TrainAndEvaluate();
+  // StackedAutoencoders::TrainAndEvaluate();
 
   return 0;
 }
