@@ -1,5 +1,6 @@
 
 #include "Network.hpp"
+#include "../common/Maybe.hpp"
 #include "../util/Timer.hpp"
 #include "../util/Util.hpp"
 
@@ -21,10 +22,13 @@ struct NetworkContext {
   vector<Vector> layerDeltas;
 };
 
+using NodeMask = vector<vector<bool>>;
+
 struct Network::NetworkImpl {
   const unsigned numInputs;
   const unsigned numOutputs;
   const unsigned numLayers;
+  const float nodeActivationRate;
 
   Tensor layerWeights;
   vector<sptr<ActivationFunc>> layerActivations;
@@ -33,7 +37,7 @@ struct Network::NetworkImpl {
 
   NetworkImpl(const NetworkSpec &spec)
       : numInputs(spec.numInputs), numOutputs(spec.numOutputs),
-        numLayers(spec.hiddenLayers.size() + 1) {
+        numLayers(spec.hiddenLayers.size() + 1), nodeActivationRate(spec.nodeActivationRate) {
 
     if (spec.hiddenLayers.empty()) {
       layerWeights.AddLayer(createLayer(numInputs, numOutputs));
@@ -60,16 +64,17 @@ struct Network::NetworkImpl {
   }
 
   NetworkImpl(const NetworkImpl &other)
-      : numInputs(other.numInputs), numOutputs(other.numOutputs), numLayers(other.numLayers) {
+      : numInputs(other.numInputs), numOutputs(other.numOutputs), numLayers(other.numLayers),
+        nodeActivationRate(other.nodeActivationRate) {
     layerWeights = other.layerWeights;
     layerActivations = other.layerActivations;
     zeroGradient = other.zeroGradient;
   }
 
-  NetworkImpl(unsigned numInputs, unsigned numOutputs, unsigned numLayers,
+  NetworkImpl(unsigned numInputs, unsigned numOutputs, unsigned numLayers, float nodeActivationRate,
               const Tensor &layerWeights)
       : numInputs(numInputs), numOutputs(numOutputs), numLayers(numLayers),
-        layerWeights(layerWeights) {
+        nodeActivationRate(nodeActivationRate), layerWeights(layerWeights) {
 
     assert(numInputs > 0 && numLayers >= 2 && numOutputs > 0);
 
@@ -83,14 +88,14 @@ struct Network::NetworkImpl {
     assert(input.rows() == numInputs);
 
     NetworkContext ctx;
-    return process(input, ctx);
+    return process(input, ctx, Maybe<NodeMask>::none);
   }
 
   Vector Process(const Vector &input, unsigned limitLayers) {
     assert(input.rows() == numInputs);
 
     NetworkContext ctx;
-    return process(input, limitLayers, ctx);
+    return process(input, limitLayers, ctx, Maybe<NodeMask>::none);
   }
 
   pair<Tensor, float> ComputeGradient(const TrainingProvider &samplesProvider) {
@@ -178,28 +183,63 @@ private:
     return gradient;
   }
 
-  Vector process(const Vector &input, NetworkContext &ctx) const {
-    return process(input, layerWeights.NumLayers(), ctx);
+  Vector process(const Vector &input, NetworkContext &ctx, const Maybe<NodeMask> &nodeMask) const {
+    return process(input, layerWeights.NumLayers(), ctx, nodeMask);
   }
 
-  Vector process(const Vector &input, unsigned limitLayers, NetworkContext &ctx) const {
+  Vector process(const Vector &input, unsigned limitLayers, NetworkContext &ctx,
+                 const Maybe<NodeMask> &nodeMask) const {
     assert(input.rows() == numInputs);
 
     ctx.layerOutputs.resize(layerWeights.NumLayers());
     ctx.layerDerivatives.resize(layerWeights.NumLayers());
 
     auto out = getLayerOutput(input, layerWeights(0), layerActivations[0].get());
+    if (nodeActivationRate < 0.999f) {
+      if (nodeMask.valid()) {
+        maskOutLayer(out, 0, nodeMask);
+      } else {
+        compensateDropout(out);
+      }
+    }
+
     ctx.layerOutputs[0] = out.first;
     ctx.layerDerivatives[0] = out.second;
 
     for (unsigned i = 1; i < limitLayers; i++) {
       out = getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get());
+
+      if (i != limitLayers - 1 && nodeActivationRate < 0.999f) {
+        if (nodeMask.valid()) {
+          maskOutLayer(out, i, nodeMask);
+        } else {
+          compensateDropout(out);
+        }
+      }
+
       ctx.layerOutputs[i] = out.first;
       ctx.layerDerivatives[i] = out.second;
     }
 
     return out.first;
   }
+
+  void maskOutLayer(pair<Vector, Vector> &out, unsigned layer,
+                    const Maybe<NodeMask> &nodeMask) const {
+
+    assert(layer < nodeMask.val().size());
+    assert(out.first.rows() == static_cast<int>(nodeMask.val()[layer].size()));
+    assert(out.second.rows() == static_cast<int>(nodeMask.val()[layer].size()));
+
+    for (unsigned i = 0; i < nodeMask.val()[layer].size(); i++) {
+      if (!nodeMask.val()[layer][i]) {
+        out.first(i) = 0.0f;
+        out.second(i) = 0.0f;
+      }
+    }
+  }
+
+  void compensateDropout(pair<Vector, Vector> &out) const { out.first *= nodeActivationRate; }
 
   // Returns the output vector of the layer, and the derivative vector for the layer.
   pair<Vector, Vector> getLayerOutput(const Vector &prevLayer, const Matrix &layerWeights,
@@ -221,7 +261,9 @@ private:
 
   void computeSampleGradient(const TrainingSample &sample, NetworkContext &ctx,
                              pair<Tensor, float> &outGradient) const {
-    Vector output = process(sample.input, ctx);
+
+    Maybe<NodeMask> mask(createDropoutMask());
+    Vector output = process(sample.input, ctx, mask);
 
     ctx.layerDeltas.resize(numLayers);
     ctx.layerDeltas[ctx.layerDeltas.size() - 1] =
@@ -256,6 +298,22 @@ private:
     }
   }
 
+  NodeMask createDropoutMask(void) const {
+    NodeMask mask;
+    if ((layerWeights.NumLayers() - 1) == 0) { // no hidden layers
+      return mask;
+    }
+
+    mask.resize(layerWeights.NumLayers() - 1);
+    for (unsigned hl = 0; hl < layerWeights.NumLayers() - 1; hl++) {
+      mask[hl].resize(layerWeights(hl).rows());
+      for (unsigned n = 0; n < layerWeights(hl).rows(); n++) {
+        mask[hl][n] = Util::RandInterval(0.0, 1.0) <= nodeActivationRate;
+      }
+    }
+    return mask;
+  }
+
   Vector getInputWithBias(const Vector &noBiasInput) const {
     Vector result(noBiasInput.rows() + 1);
     result(noBiasInput.rows()) = 1.0f;
@@ -279,7 +337,8 @@ Network::Network(istream &stream) {
   Tensor layerWeights;
   layerWeights.Deserialize(stream);
 
-  impl = make_unique<NetworkImpl>(numInputs, numOutputs, numLayers, layerWeights);
+  // TODO: this is wrong, but its a quick hack for now as we arent saving the nodeActivationRate.
+  impl = make_unique<NetworkImpl>(numInputs, numOutputs, numLayers, 1.0f, layerWeights);
 }
 Network::~Network() = default;
 

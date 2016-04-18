@@ -65,13 +65,14 @@ void ConditionedDeepNN::TrainAndEvaluate(void) {
 }
 
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
-  auto hiddenActivation = make_shared<Logistic>();
+  auto hiddenActivation = make_shared<ReLU>(0.01f);
 
   NetworkSpec spec;
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
   // spec.hiddenLayers = {make_pair(inputSize / 4, hiddenActivation)};
+  spec.nodeActivationRate = 0.75f;
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
                        make_pair(inputSize / 2, hiddenActivation)};
 
@@ -138,7 +139,7 @@ uptr<Trainer> getTrainer(void) {
 
 void learn(Network &network, vector<TrainingSample> &trainingSamples,
            vector<TrainingSample> &testSamples) {
-  conditionNetwork(network, trainingSamples);
+  // conditionNetwork(network, trainingSamples);
 
   auto trainer = getTrainer();
   trainer->AddProgressCallback(
@@ -156,6 +157,6 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
   cout << "starting training..." << endl;
 
   // AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 20000, nullptr);
+  trainer->Train(network, trainingSamples, 30000, nullptr);
   cout << "finished" << endl;
 }

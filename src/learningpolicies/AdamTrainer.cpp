@@ -134,7 +134,7 @@ struct AdamTrainer::AdamTrainerImpl {
 
   unsigned numStochasticSamples(unsigned curIter, unsigned totalIters) {
     assert(curIter <= totalIters);
-    return 5000;
+    return 2000;
   }
 };
 

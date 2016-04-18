@@ -122,22 +122,7 @@ struct Autoencoder::AutoencoderImpl {
     return TrainingSample(input, sample.expectedOutput);
   }
 
-  uptr<Trainer> getTrainer(unsigned numSamples) {
-    return uptr<Trainer>(new AdamTrainer());
-    // DynamicTrainerBuilder builder;
-    //
-    // builder.StartLearnRate(0.01f)
-    //     .FinishLearnRate(0.0001f)
-    //     .MaxLearnRate(0.1f)
-    //     .Momentum(0.5f)
-    //     .StartSamplesPerIter(5000)
-    //     .FinishSamplesPerIter(5000)
-    //     .UseMomentum(true)
-    //     .UseSpeedup(true)
-    //     .UseWeightRates(true);
-    //
-    // return builder.Build();
-  }
+  uptr<Trainer> getTrainer(unsigned numSamples) { return uptr<Trainer>(new AdamTrainer()); }
 
   uptr<ActivationFunc> activationFuncForData(EncodedDataType dataType) {
     if (dataType == EncodedDataType::BOUNDED_NORMALISED) {

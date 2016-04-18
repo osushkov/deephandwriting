@@ -7,12 +7,15 @@
 #include "TrainingProvider.hpp"
 #include <vector>
 
+// TODO: give this a default constructor so that we can guarantee things like nodeActivationrate
+// have a sane default if not explicitly set.
 struct NetworkSpec {
   unsigned numInputs;
   unsigned numOutputs;
 
   sptr<ActivationFunc> outputFunc;
   vector<pair<unsigned, sptr<ActivationFunc>>> hiddenLayers;
+  float nodeActivationRate; // The inverse of the dropout rate. Set to 1.0 to not use dropout.
 };
 
 class Network {
@@ -20,7 +23,7 @@ public:
   static void OutputDebugging(void);
 
   Network(const Network &other); // copy ctor
-  Network(Network &&other); // move ctor
+  Network(Network &&other);      // move ctor
 
   Network(const NetworkSpec &spec);
   Network(istream &stream); // TODO: this constructor doesnt handle different activation funcs.
