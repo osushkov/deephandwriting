@@ -128,13 +128,10 @@ void trainFeatureExtractor(Network &network, vector<TrainingSample> &trainingSam
         layer == 0 ? autoencodedSamplesFromTrainingData(trainingSamples)
                    : autoencodedSamplesFromNetworkLayer(network, layer, trainingSamples);
 
-    EncodedDataType inputType = EncodedDataType::BOUNDED_NORMALISED;
-    // layer == 0 ? EncodedDataType::BOUNDED_NORMALISED : EncodedDataType::UNBOUNDED;
-
-    Autoencoder autoEncoder(0.25f);
-    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<Logistic>(),
-                                               conditionSubsample, inputType);
-    network.SetLayerWeights(layer, hl);
+    // Autoencoder autoEncoder(0.25f);
+    // Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<Logistic>(),
+    //                                            conditionSubsample, inputType);
+    // network.SetLayerWeights(layer, hl);
   }
 
   cout << "finished training feature extractor" << endl;

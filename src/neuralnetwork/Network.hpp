@@ -16,6 +16,7 @@ struct NetworkSpec {
   sptr<ActivationFunc> outputFunc;
   vector<pair<unsigned, sptr<ActivationFunc>>> hiddenLayers;
   float nodeActivationRate; // The inverse of the dropout rate. Set to 1.0 to not use dropout.
+  bool softmaxOutput;
 };
 
 class Network {
@@ -42,6 +43,8 @@ public:
   Tensor Weights(void) const;
   Matrix LayerWeights(unsigned layer) const;
   void SetLayerWeights(unsigned layer, const Matrix &weights);
+
+  uptr<ActivationFunc> LayerActivationFunc(unsigned layer) const;
 
   std::ostream &Output(ostream &stream);
 

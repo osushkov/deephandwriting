@@ -34,7 +34,8 @@ struct Autoencoder::AutoencoderImpl {
   AutoencoderImpl(float pLoss) : pLoss(pLoss) { assert(pLoss <= 1.0f && pLoss >= 0.0f); }
 
   Matrix ComputeHiddenLayer(unsigned layerSize, uptr<ActivationFunc> hiddenFunc,
-                            const vector<TrainingSample> &samples, EncodedDataType dataType) {
+                            const vector<TrainingSample> &samples,
+                            uptr<ActivationFunc> dataModelingFunc) {
 
     assert(layerSize > 0);
     assert(!samples.empty());
@@ -42,11 +43,13 @@ struct Autoencoder::AutoencoderImpl {
     NetworkSpec spec;
     spec.numInputs = samples[0].input.rows();
     spec.numOutputs = spec.numInputs;
-    spec.outputFunc = activationFuncForData(dataType);
+    spec.outputFunc = move(dataModelingFunc);
     spec.hiddenLayers = {make_pair(layerSize, move(hiddenFunc))};
+    spec.nodeActivationRate = 1.0f;
+    spec.softmaxOutput = false;
 
     auto network = make_unique<Network>(spec);
-    conditionInitialWeights(*network);
+    // conditionInitialWeights(*network);
 
     auto trainer = getTrainer(samples.size());
     trainer->AddProgressCallback([](Network &network, float trainError, unsigned iter) {
@@ -55,9 +58,9 @@ struct Autoencoder::AutoencoderImpl {
       }
     });
 
-    AutoencoderRestriction restriction;
-    vector<TrainingSample> noisySamples = getNoisySamples(samples, dataType);
-    trainer->Train(*(network.get()), noisySamples, 2000, &restriction);
+    // AutoencoderRestriction restriction;
+    vector<TrainingSample> noisySamples = getNoisySamples(samples);
+    trainer->Train(*(network.get()), noisySamples, 2000, nullptr);
 
     // debugNetworkVisually(network.get(), noisySamples);
     return network->LayerWeights(0);
@@ -100,19 +103,18 @@ struct Autoencoder::AutoencoderImpl {
     network.SetLayerWeights(0, w0);
   }
 
-  vector<TrainingSample> getNoisySamples(const vector<TrainingSample> &samples,
-                                         EncodedDataType dataType) {
+  vector<TrainingSample> getNoisySamples(const vector<TrainingSample> &samples) {
     vector<TrainingSample> noisySamples;
     noisySamples.reserve(samples.size());
 
     for (const auto &s : samples) {
-      noisySamples.push_back(getNoisySample(s, dataType));
+      noisySamples.push_back(getNoisySample(s));
     }
 
     return noisySamples;
   }
 
-  TrainingSample getNoisySample(const TrainingSample &sample, EncodedDataType dataType) {
+  TrainingSample getNoisySample(const TrainingSample &sample) {
     Vector input = sample.input;
     for (int r = 0; r < input.rows(); r++) {
       if (Util::RandInterval(0.0, 1.0) < pLoss) {
@@ -123,14 +125,6 @@ struct Autoencoder::AutoencoderImpl {
   }
 
   uptr<Trainer> getTrainer(unsigned numSamples) { return uptr<Trainer>(new AdamTrainer()); }
-
-  uptr<ActivationFunc> activationFuncForData(EncodedDataType dataType) {
-    if (dataType == EncodedDataType::BOUNDED_NORMALISED) {
-      return make_unique<Logistic>();
-    } else {
-      return make_unique<Linear>();
-    }
-  }
 };
 
 Autoencoder::Autoencoder(float pLoss) : impl(new AutoencoderImpl(pLoss)) {}
@@ -138,6 +132,6 @@ Autoencoder::~Autoencoder() = default;
 
 Matrix Autoencoder::ComputeHiddenLayer(unsigned layerSize, uptr<ActivationFunc> hiddenFunc,
                                        const vector<TrainingSample> &samples,
-                                       EncodedDataType dataType) {
-  return impl->ComputeHiddenLayer(layerSize, move(hiddenFunc), samples, dataType);
+                                       uptr<ActivationFunc> dataModelingFunc) {
+  return impl->ComputeHiddenLayer(layerSize, move(hiddenFunc), samples, move(dataModelingFunc));
 }

@@ -29,6 +29,7 @@ struct Network::NetworkImpl {
   const unsigned numOutputs;
   const unsigned numLayers;
   const float nodeActivationRate;
+  const bool useSoftmax;
 
   Tensor layerWeights;
   vector<sptr<ActivationFunc>> layerActivations;
@@ -37,7 +38,8 @@ struct Network::NetworkImpl {
 
   NetworkImpl(const NetworkSpec &spec)
       : numInputs(spec.numInputs), numOutputs(spec.numOutputs),
-        numLayers(spec.hiddenLayers.size() + 1), nodeActivationRate(spec.nodeActivationRate) {
+        numLayers(spec.hiddenLayers.size() + 1), nodeActivationRate(spec.nodeActivationRate),
+        useSoftmax(spec.softmaxOutput) {
 
     if (spec.hiddenLayers.empty()) {
       layerWeights.AddLayer(createLayer(numInputs, numOutputs));
@@ -65,16 +67,16 @@ struct Network::NetworkImpl {
 
   NetworkImpl(const NetworkImpl &other)
       : numInputs(other.numInputs), numOutputs(other.numOutputs), numLayers(other.numLayers),
-        nodeActivationRate(other.nodeActivationRate) {
+        nodeActivationRate(other.nodeActivationRate), useSoftmax(other.useSoftmax) {
     layerWeights = other.layerWeights;
     layerActivations = other.layerActivations;
     zeroGradient = other.zeroGradient;
   }
 
   NetworkImpl(unsigned numInputs, unsigned numOutputs, unsigned numLayers, float nodeActivationRate,
-              const Tensor &layerWeights)
+              bool useSoftmax, const Tensor &layerWeights)
       : numInputs(numInputs), numOutputs(numOutputs), numLayers(numLayers),
-        nodeActivationRate(nodeActivationRate), layerWeights(layerWeights) {
+        nodeActivationRate(nodeActivationRate), useSoftmax(useSoftmax), layerWeights(layerWeights) {
 
     assert(numInputs > 0 && numLayers >= 2 && numOutputs > 0);
 
@@ -147,6 +149,11 @@ struct Network::NetworkImpl {
     layerWeights(layer) = weights;
   }
 
+  uptr<ActivationFunc> LayerActivationFunc(unsigned layer) const {
+    assert(layer < layerWeights.NumLayers());
+    return layerActivations[layer]->Clone();
+  }
+
 private:
   Matrix createLayer(unsigned inputSize, unsigned layerSize) {
     assert(inputSize > 0 && layerSize > 0);
@@ -194,7 +201,7 @@ private:
     ctx.layerOutputs.resize(layerWeights.NumLayers());
     ctx.layerDerivatives.resize(layerWeights.NumLayers());
 
-    auto out = getLayerOutput(input, layerWeights(0), layerActivations[0].get());
+    auto out = getLayerOutput(input, layerWeights(0), layerActivations[0].get(), false);
     if (nodeActivationRate < 0.999f) {
       if (nodeMask.valid()) {
         maskOutLayer(out, 0, nodeMask);
@@ -207,7 +214,8 @@ private:
     ctx.layerDerivatives[0] = out.second;
 
     for (unsigned i = 1; i < limitLayers; i++) {
-      out = getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get());
+      out = getLayerOutput(ctx.layerOutputs[i - 1], layerWeights(i), layerActivations[i].get(),
+                           i == (layerWeights.NumLayers() - 1));
 
       if (i != limitLayers - 1 && nodeActivationRate < 0.999f) {
         if (nodeMask.valid()) {
@@ -243,17 +251,21 @@ private:
 
   // Returns the output vector of the layer, and the derivative vector for the layer.
   pair<Vector, Vector> getLayerOutput(const Vector &prevLayer, const Matrix &layerWeights,
-                                      ActivationFunc *func) const {
-    Vector z =
-        layerWeights.topRightCorner(layerWeights.rows(), layerWeights.cols() - 1) * prevLayer;
+                                      ActivationFunc *func, bool isOutput) const {
+    Vector z = layerWeights * getInputWithBias(prevLayer);
+    // layerWeights.topRightCorner(layerWeights.rows(), layerWeights.cols() - 1) * prevLayer;
     Vector derivatives(z.rows());
 
-    for (unsigned i = 0; i < layerWeights.rows(); i++) {
-      z(i) += layerWeights(i, 0);
-      float in = z(i);
+    if (isOutput && useSoftmax) {
+      z = Util::SoftmaxActivations(z);
+    } else {
+      for (unsigned i = 0; i < layerWeights.rows(); i++) {
+        // z(i) += layerWeights(i, 0);
+        float in = z(i);
 
-      z(i) = func->ActivationValue(in);
-      derivatives(i) = func->DerivativeValue(in, z(i));
+        z(i) = func->ActivationValue(in);
+        derivatives(i) = func->DerivativeValue(in, z(i));
+      }
     }
 
     return make_pair(z, derivatives);
@@ -338,7 +350,7 @@ Network::Network(istream &stream) {
   layerWeights.Deserialize(stream);
 
   // TODO: this is wrong, but its a quick hack for now as we arent saving the nodeActivationRate.
-  impl = make_unique<NetworkImpl>(numInputs, numOutputs, numLayers, 1.0f, layerWeights);
+  impl = make_unique<NetworkImpl>(numInputs, numOutputs, numLayers, 1.0f, true, layerWeights);
 }
 Network::~Network() = default;
 
@@ -363,6 +375,10 @@ Matrix Network::LayerWeights(unsigned layer) const { return impl->LayerWeights(l
 
 void Network::SetLayerWeights(unsigned layer, const Matrix &weights) {
   impl->SetLayerWeights(layer, weights);
+}
+
+uptr<ActivationFunc> Network::LayerActivationFunc(unsigned layer) const {
+  return impl->LayerActivationFunc(layer);
 }
 
 std::ostream &Network::Output(ostream &stream) {

@@ -47,7 +47,7 @@ static void learn(Network &network, vector<TrainingSample> &trainingSamples,
 void ConditionedDeepNN::TrainAndEvaluate(void) {
   cout << "loading training data" << endl;
   vector<TrainingSample> trainingSamples =
-      DataLoader::loadSamples("data/train_images.idx3", "data/train_labels.idx1", true);
+      DataLoader::loadSamples("data/train_images.idx3", "data/train_labels.idx1", false);
   random_shuffle(trainingSamples.begin(), trainingSamples.end());
   cout << "training data size: " << trainingSamples.size() << endl;
 
@@ -65,16 +65,17 @@ void ConditionedDeepNN::TrainAndEvaluate(void) {
 }
 
 Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
-  auto hiddenActivation = make_shared<ReLU>(0.01f);
+  auto hiddenActivation = make_shared<Tanh>();
 
   NetworkSpec spec;
   spec.numInputs = inputSize;
   spec.numOutputs = outputSize;
   spec.outputFunc = make_shared<Logistic>();
   // spec.hiddenLayers = {make_pair(inputSize / 4, hiddenActivation)};
-  spec.nodeActivationRate = 0.75f;
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
                        make_pair(inputSize / 2, hiddenActivation)};
+  spec.nodeActivationRate = 0.6f;
+  spec.softmaxOutput = true;
 
   return Network(spec);
 }
@@ -108,12 +109,12 @@ void conditionNetwork(Network &network, vector<TrainingSample> &trainingSamples)
         layer == 0 ? autoencodedSamplesFromTrainingData(trainingSamples)
                    : autoencodedSamplesFromNetworkLayer(network, layer, trainingSamples);
 
-    EncodedDataType inputType = EncodedDataType::BOUNDED_NORMALISED;
-    // layer == 0 ? EncodedDataType::BOUNDED_NORMALISED : EncodedDataType::UNBOUNDED;
+    auto fitFunc = network.LayerActivationFunc(layer);
+    auto outputFunc = make_unique<Linear>();
 
     Autoencoder autoEncoder(0.25f);
-    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), make_unique<Logistic>(),
-                                               conditionSubsample, inputType);
+    Matrix hl = autoEncoder.ComputeHiddenLayer(network.LayerSize(layer), move(fitFunc),
+                                               conditionSubsample, move(outputFunc));
     network.SetLayerWeights(layer, hl);
   }
 
@@ -139,7 +140,7 @@ uptr<Trainer> getTrainer(void) {
 
 void learn(Network &network, vector<TrainingSample> &trainingSamples,
            vector<TrainingSample> &testSamples) {
-  // conditionNetwork(network, trainingSamples);
+  conditionNetwork(network, trainingSamples);
 
   auto trainer = getTrainer();
   trainer->AddProgressCallback(
@@ -157,6 +158,6 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
   cout << "starting training..." << endl;
 
   // AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 30000, nullptr);
+  trainer->Train(network, trainingSamples, 20000, nullptr);
   cout << "finished" << endl;
 }
