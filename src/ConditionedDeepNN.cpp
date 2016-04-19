@@ -73,7 +73,8 @@ Network createNewNetwork(unsigned inputSize, unsigned outputSize) {
   spec.outputFunc = make_shared<Logistic>();
   // spec.hiddenLayers = {make_pair(inputSize / 4, hiddenActivation)};
   spec.hiddenLayers = {make_pair(inputSize, hiddenActivation),
-                       make_pair(inputSize / 2, hiddenActivation)};
+                       make_pair(inputSize / 2, hiddenActivation),
+                       make_pair(inputSize / 4, hiddenActivation)};
   spec.nodeActivationRate = 0.6f;
   spec.softmaxOutput = true;
 
