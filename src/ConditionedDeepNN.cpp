@@ -47,7 +47,7 @@ static void learn(Network &network, vector<TrainingSample> &trainingSamples,
 void ConditionedDeepNN::TrainAndEvaluate(void) {
   cout << "loading training data" << endl;
   vector<TrainingSample> trainingSamples =
-      DataLoader::loadSamples("data/train_images.idx3", "data/train_labels.idx1", false);
+      DataLoader::loadSamples("data/train_images.idx3", "data/train_labels.idx1", true);
   random_shuffle(trainingSamples.begin(), trainingSamples.end());
   cout << "training data size: " << trainingSamples.size() << endl;
 
@@ -158,6 +158,6 @@ void learn(Network &network, vector<TrainingSample> &trainingSamples,
   cout << "starting training..." << endl;
 
   // AllowSelectLayers restrictLayers({1});
-  trainer->Train(network, trainingSamples, 20000, nullptr);
+  trainer->Train(network, trainingSamples, 30000, nullptr);
   cout << "finished" << endl;
 }
